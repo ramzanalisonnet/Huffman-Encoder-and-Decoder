@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huffman Encoder/Decoder</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Animated Background -->
+        <div class="bg-animation">
+            <div class="binary-rain" id="binaryRain"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-tree"></i>
+                <h1>Huffman<span>Coder</span></h1>
+            </div>
+            <p class="subtitle">Lossless Data Compression System</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="card input-section">
+                <!-- Hidden file input at section level -->
+                <input type="file" id="txtFileInput" accept=".txt,.text" style="display: none;" onchange="loadTxtFile(this)">
+                
+                <div class="card-header">
+                    <h2><i class="fas fa-keyboard"></i> Input Text</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-sm" onclick="document.getElementById('txtFileInput').click()">
+                            <i class="fas fa-upload"></i> Upload .txt
+                        </button>
+                        <button class="btn btn-sm" onclick="loadSampleText()">
+                            <i class="fas fa-file-alt"></i> Sample
+                        </button>
+                        <button class="btn btn-sm" onclick="clearInput()">
+                            <i class="fas fa-eraser"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <textarea id="inputText" placeholder="Enter or paste your text here to encode..."></textarea>
+                    <div class="input-stats">
+                        <span><i class="fas fa-font"></i> Characters: <strong id="charCount">0</strong></span>
+                        <span><i class="fas fa-file-code"></i> Bytes: <strong id="byteCount">0</strong></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn btn-primary btn-large" onclick="encode()">
+                    <i class="fas fa-compress-arrows-alt"></i>
+                    Encode
+                </button>
+                <button class="btn btn-secondary btn-large" onclick="decode()">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                    Decode
+                </button>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="results-grid">
+                <!-- Frequency Table -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-chart-bar"></i> Frequency Analysis</h2>
+                        <button class="btn btn-sm" onclick="toggleSort()">
+                            <i class="fas fa-sort"></i> Sort
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container" id="frequencyTableContainer">
+                            <p class="placeholder-text">Encode text to see frequency analysis</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Huffman Codes -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-code"></i> Huffman Codes</h2>
+                        <button class="btn btn-sm" onclick="copyCodesTable()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container" id="codesTableContainer">
+                            <p class="placeholder-text">Encode text to see Huffman codes</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Encoded Output -->
+            <section class="card encoded-section">
+                <!-- Hidden file input at section level -->
+                <input type="file" id="binFileInput" accept=".bin,.huff" style="display: none;" onchange="loadBinFile(this)">
+                
+                <div class="card-header">
+                    <h2><i class="fas fa-binary"></i> Encoded Binary</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-sm" onclick="document.getElementById('binFileInput').click()">
+                            <i class="fas fa-upload"></i> Upload .bin
+                        </button>
+                        <button class="btn btn-sm" onclick="copyEncoded()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-sm" onclick="downloadEncoded()">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="binary-display" id="encodedOutput">
+                        <p class="placeholder-text">Encoded binary will appear here</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Compression Stats -->
+            <section class="card stats-section">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-pie"></i> Compression Statistics</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-file"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-label">Original Size</span>
+                                <span class="stat-value" id="originalSize">-</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-file-archive"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-label">Compressed Size</span>
+                                <span class="stat-value" id="compressedSize">-</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-label">Compression Ratio</span>
+                                <span class="stat-value" id="compressionRatio">-</span>
+                            </div>
+                        </div>
+                        <div class="stat-card highlight">
+                            <div class="stat-icon"><i class="fas fa-save"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-label">Space Saved</span>
+                                <span class="stat-value" id="spaceSaved">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span>Original</span>
+                            <span>Compressed</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="compressionBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Huffman Tree Visualization -->
+            <section class="card tree-section">
+                <div class="card-header">
+                    <h2><i class="fas fa-sitemap"></i> Huffman Tree</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-sm" onclick="zoomIn()">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="btn btn-sm" onclick="zoomOut()">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-sm" onclick="resetZoom()">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="tree-container" id="treeContainer">
+                        <div class="tree-placeholder">
+                            <i class="fas fa-tree"></i>
+                            <p>Huffman tree visualization will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Decode Section -->
+            <section class="card decode-section">
+                <div class="card-header">
+                    <h2><i class="fas fa-unlock"></i> Decoded Output</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-sm" onclick="copyDecoded()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-sm" onclick="downloadDecoded()">
+                            <i class="fas fa-download"></i> Download .txt
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="decoded-display" id="decodedOutput">
+                        <p class="placeholder-text">Decoded text will appear here</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Huffman Coding System &copy; 2025 | Full-Duplex Channel Communication</p>
+            <p class="footer-links">
+                <a href="#" onclick="showAbout()"><i class="fas fa-info-circle"></i> About</a>
+                <a href="#" onclick="showHelp()"><i class="fas fa-question-circle"></i> Help</a>
+            </p>
+        </footer>
+
+        <!-- Modal -->
+        <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 id="modalTitle">About</h3>
+                    <button class="modal-close" onclick="closeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">
+            <i class="fas fa-check-circle"></i>
+            <span id="toastMessage">Operation successful!</span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
