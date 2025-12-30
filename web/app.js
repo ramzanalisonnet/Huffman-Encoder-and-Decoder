@@ -3,19 +3,97 @@
  * Main application logic and UI interactions
  */
 
+// Tab switching function
+function switchTab(tabName) {
+    // Remove active class from all tabs and contents
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    // Add active class to selected tab and content
+    if (tabName === 'encoded') {
+        document.getElementById('encodedTab').classList.add('active');
+        document.getElementById('encodedContent').classList.add('active');
+    } else if (tabName === 'decoded') {
+        document.getElementById('decodedTab').classList.add('active');
+        document.getElementById('decodedContent').classList.add('active');
+    }
+}
+
 // Simple global function for txt file upload (called from HTML onclick)
 function loadTxtFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        document.getElementById('inputText').value = e.target.result;
-        updateInputStats();
-        showToast('File loaded: ' + file.name, 'success');
-        input.value = ''; // Reset for next upload
-    };
-    reader.readAsText(file);
+    try {
+        const file = input.files[0];
+        if (!file) {
+            console.log('No file selected');
+            return;
+        }
+        
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            alert(`File is too large (${formatBytes(file.size)}). Maximum size is 10MB.`);
+            input.value = '';
+            return;
+        }
+        
+        console.log('Loading txt file:', file.name, 'Size:', file.size);
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                console.log('File read successfully, length:', content.length);
+                
+                const textarea = document.getElementById('inputText');
+                if (!textarea) {
+                    console.error('Textarea #inputText not found!');
+                    alert('Error: Input textarea not found');
+                    return;
+                }
+                
+                textarea.value = content;
+                console.log('Content set to textarea');
+                
+                // Call updateInputStats if it exists
+                if (typeof updateInputStats === 'function') {
+                    updateInputStats();
+                } else {
+                    // Manual update if function doesn't exist yet
+                    const charCount = document.getElementById('charCount');
+                    const byteCount = document.getElementById('byteCount');
+                    if (charCount) charCount.textContent = content.length.toLocaleString();
+                    if (byteCount) byteCount.textContent = new TextEncoder().encode(content).length.toLocaleString();
+                }
+                
+                // Show toast if function exists
+                if (typeof showToast === 'function') {
+                    showToast('File loaded: ' + file.name, 'success');
+                } else {
+                    console.log('File loaded successfully:', file.name);
+                    alert('File loaded: ' + file.name);
+                }
+                
+                input.value = ''; // Reset for next upload
+            } catch (err) {
+                console.error('Error in onload:', err);
+                alert('Error processing file: ' + err.message);
+            }
+        };
+        
+        reader.onerror = function(e) {
+            console.error('FileReader error:', e);
+            alert('Error reading file');
+            input.value = '';
+        };
+        
+        console.log('Starting to read file...');
+        reader.readAsText(file);
+        
+    } catch (err) {
+        console.error('Error in loadTxtFile:', err);
+        alert('Error loading file: ' + err.message);
+    }
 }
 
 // Simple global function for bin/huff file upload (called from HTML onclick)
@@ -23,45 +101,87 @@ function loadBinFile(input) {
     const file = input.files[0];
     if (!file) return;
     
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+        showToast(`File is too large (${formatBytes(file.size)}). Maximum size is 50MB.`, 'error');
+        input.value = '';
+        return;
+    }
+    
     const reader = new FileReader();
     reader.onload = function(e) {
-        const arrayBuffer = e.target.result;
-        const bytes = new Uint8Array(arrayBuffer);
-        
-        // Check for HUFF magic header
-        if (bytes.length >= 8 && 
-            bytes[0] === 0x48 && bytes[1] === 0x55 && 
-            bytes[2] === 0x46 && bytes[3] === 0x46) {
-            // Parse HUFF file format (little endian)
-            const codesLength = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | (bytes[7] << 24);
-            const codesJson = new TextDecoder().decode(bytes.slice(8, 8 + codesLength));
+        try {
+            const arrayBuffer = e.target.result;
+            const bytes = new Uint8Array(arrayBuffer);
             
-            // Convert remaining bytes to binary string
-            let binaryData = '';
-            for (let i = 8 + codesLength; i < bytes.length; i++) {
-                binaryData += bytes[i].toString(2).padStart(8, '0');
-            }
+            console.log('Loading bin file:', file.name, 'Size:', bytes.length);
             
-            try {
-                currentCodes = JSON.parse(codesJson);
-                currentEncodedData = binaryData;
-                displayEncodedBinary(binaryData);
-                showToast('Loaded .huff file with codes - ready to decode!', 'success');
-            } catch (err) {
-                showToast('Error parsing .huff file', 'error');
+            // Check for HUFF magic header
+            if (bytes.length >= 8 && 
+                bytes[0] === 0x48 && bytes[1] === 0x55 && 
+                bytes[2] === 0x46 && bytes[3] === 0x46) {
+                // Parse HUFF file format (little endian)
+                const codesLength = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | (bytes[7] << 24);
+                const codesJson = new TextDecoder().decode(bytes.slice(8, 8 + codesLength));
+                
+                console.log('Codes JSON length:', codesLength);
+                console.log('Codes JSON:', codesJson);
+                
+                // Convert remaining bytes to binary string
+                let binaryData = '';
+                const binaryStartPos = 8 + codesLength;
+                for (let i = binaryStartPos; i < bytes.length; i++) {
+                    binaryData += bytes[i].toString(2).padStart(8, '0');
+                }
+                
+                console.log('Binary data length:', binaryData.length, 'bits');
+                console.log('Binary start position:', binaryStartPos);
+                console.log('Total bytes:', bytes.length);
+                
+                try {
+                    const parsedCodes = JSON.parse(codesJson);
+                    currentCodes = parsedCodes;
+                    currentEncodedData = binaryData;
+                    
+                    console.log('Parsed codes:', currentCodes);
+                    console.log('Number of codes:', Object.keys(currentCodes).length);
+                    
+                    // Display the codes table
+                    displayCodesTable(currentCodes);
+                    
+                    // Display the encoded binary
+                    displayEncodedBinary(binaryData);
+                    
+                    showToast('Loaded .huff file with ' + Object.keys(currentCodes).length + ' codes - ready to decode!', 'success');
+                } catch (err) {
+                    console.error('Error parsing .huff file:', err);
+                    showToast('Error parsing .huff file: ' + err.message, 'error');
+                }
+            } else {
+                // Plain binary file - convert bytes to binary string
+                let binaryString = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binaryString += bytes[i].toString(2).padStart(8, '0');
+                }
+                currentEncodedData = binaryString;
+                displayEncodedBinary(binaryString);
+                showToast('Loaded binary file (no codes - encode text first before decoding)', 'warning');
             }
-        } else {
-            // Plain binary file - convert bytes to binary string
-            let binaryString = '';
-            for (let i = 0; i < bytes.length; i++) {
-                binaryString += bytes[i].toString(2).padStart(8, '0');
-            }
-            currentEncodedData = binaryString;
-            displayEncodedBinary(binaryString);
-            showToast('Loaded binary file (no codes - encode text first before decoding)', 'warning');
+            input.value = ''; // Reset for next upload
+        } catch (err) {
+            console.error('Error in loadBinFile:', err);
+            showToast('Error loading file: ' + err.message, 'error');
+            input.value = '';
         }
-        input.value = ''; // Reset for next upload
     };
+    
+    reader.onerror = function(e) {
+        console.error('FileReader error:', e);
+        showToast('Error reading file', 'error');
+        input.value = '';
+    };
+    
     reader.readAsArrayBuffer(file);
 }
 
@@ -156,6 +276,51 @@ function updateBackendIndicator(cppActive) {
 }
 
 function showBackendInfo() {
+    const modalOverlay = document.getElementById('modalOverlay');
+    if (!modalOverlay) return;
+    
+    document.getElementById('modalTitle').textContent = 'Huffman Coding Algorithm';
+    document.getElementById('modalBody').innerHTML = `
+        <div class="algorithm-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h4>Calculate Frequencies</h4>
+                <p>Count the occurrence of each character in the input text.</p>
+            </div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h4>Build Priority Queue</h4>
+                <p>Create a min-heap with nodes for each character, ordered by frequency.</p>
+            </div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h4>Construct Huffman Tree</h4>
+                <p>Repeatedly extract the two nodes with lowest frequencies, create a parent node with their combined frequency, and insert it back into the queue.</p>
+            </div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <h4>Generate Codes</h4>
+                <p>Traverse the tree from root to each leaf, assigning '0' for left branches and '1' for right branches. Each path forms the code for that character.</p>
+            </div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <h4>Encode & Decode</h4>
+                <p>Replace each character with its code for encoding. For decoding, traverse the tree using the bits until reaching a leaf node.</p>
+            </div>
+        </div>
+    `;
+    modalOverlay.classList.add('active');
+}
+
+function showBackendInfo_old() {
     const modalOverlay = document.getElementById('modalOverlay');
     document.getElementById('modalTitle').textContent = 'Backend Information';
     const content = document.getElementById('modalBody');
@@ -327,10 +492,13 @@ async function encode() {
             displayTreeFromJson(result.tree);
         }
 
+        // Switch to encoded tab
+        switchTab('encoded');
+
         showToast('Text encoded successfully with C++ Backend!', 'success');
         
         // Scroll to results
-        document.querySelector('.results-grid').scrollIntoView({ behavior: 'smooth' });
+        document.querySelector('.output-tabs-section').scrollIntoView({ behavior: 'smooth' });
 
     } catch (error) {
         console.error('Encoding error:', error);
@@ -341,33 +509,52 @@ async function encode() {
 }
 
 async function encodeWithCppBackend(text) {
-    const response = await fetch(`${API_BASE}/api/encode`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'text/plain'
-        },
-        body: text
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
-    if (!response.ok) {
-        throw new Error('Backend encoding failed');
-    }
-    
-    const data = await response.json();
-    
-    // Convert backend response to our format
-    return {
-        encoded: data.encoded,
-        codes: data.codes,
-        frequencies: data.frequencies,
-        tree: data.tree,
-        stats: {
-            originalBits: data.stats.originalBits,
-            encodedBits: data.stats.encodedBits,
-            compressionRatio: data.stats.compressionRatio,
-            spaceSaved: data.stats.originalBits - data.stats.encodedBits
+    try {
+        const response = await fetch(`${API_BASE}/api/encode`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain'
+            },
+            body: text,
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            throw new Error(`Backend encoding failed: ${response.status} ${response.statusText}`);
         }
-    };
+        
+        const data = await response.json();
+        
+        // Validate response
+        if (!data.encoded || !data.codes) {
+            throw new Error('Invalid response from backend - missing encoded data or codes');
+        }
+        
+        // Convert backend response to our format
+        return {
+            encoded: data.encoded,
+            codes: data.codes,
+            frequencies: data.frequencies || {},
+            tree: data.tree || null,
+            stats: {
+                originalBits: data.stats?.originalBits || 0,
+                encodedBits: data.stats?.encodedBits || 0,
+                compressionRatio: data.stats?.compressionRatio || 0,
+                spaceSaved: (data.stats?.originalBits || 0) - (data.stats?.encodedBits || 0)
+            }
+        };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - server took too long to respond');
+        }
+        throw error;
+    }
 }
 
 function showLoading(show) {
@@ -410,6 +597,12 @@ function showLoading(show) {
 
 function displayFrequencyTable(frequencies) {
     // From C++ backend
+    if (!frequencies || Object.keys(frequencies).length === 0) {
+        document.getElementById('frequencyTableContainer').innerHTML = 
+            '<p class="placeholder-text">No frequency data available</p>';
+        return;
+    }
+    
     let entries = Object.entries(frequencies);
     if (sortOrder === 'frequency') {
         entries.sort((a, b) => b[1] - a[1]);
@@ -450,6 +643,12 @@ function displayFrequencyTable(frequencies) {
 
 function displayCodesTable(codes) {
     // From C++ backend
+    if (!codes || Object.keys(codes).length === 0) {
+        document.getElementById('codesTableContainer').innerHTML = 
+            '<p class="placeholder-text">No codes data available</p>';
+        return;
+    }
+    
     let entries = Object.entries(codes);
     entries.sort((a, b) => a[1].length - b[1].length);
 
@@ -501,24 +700,31 @@ function displayEncodedBinary(encoded) {
 }
 
 function displayStats(stats) {
-    document.getElementById('originalSize').textContent = 
-        `${stats.originalBits.toLocaleString()} bits`;
-    document.getElementById('compressedSize').textContent = 
-        `${stats.encodedBits.toLocaleString()} bits`;
+    if (!stats) return;
     
-    // Handle compressionRatio as either string or number
-    const ratio = typeof stats.compressionRatio === 'string' ? 
+    document.getElementById('originalSize').textContent = 
+        `${(stats.originalBits || 0).toLocaleString()} bits`;
+    document.getElementById('compressedSize').textContent = 
+        `${(stats.encodedBits || 0).toLocaleString()} bits`;
+    
+    // Handle compressionRatio as either string or number, prevent NaN
+    let ratio = typeof stats.compressionRatio === 'string' ? 
         parseFloat(stats.compressionRatio) : stats.compressionRatio;
+    
+    // Validate ratio is a valid number
+    if (isNaN(ratio) || !isFinite(ratio)) {
+        ratio = 0;
+    }
     
     document.getElementById('compressionRatio').textContent = 
         `${ratio.toFixed(1)}%`;
     document.getElementById('spaceSaved').textContent = 
-        `${stats.spaceSaved.toLocaleString()} bits`;
+        `${(stats.spaceSaved || 0).toLocaleString()} bits`;
     
     // Animate compression bar
     setTimeout(() => {
         document.getElementById('compressionBar').style.width = 
-            `${Math.min(ratio, 100)}%`;
+            `${Math.min(Math.max(ratio, 0), 100)}%`;
     }, 100);
 }
 
@@ -783,33 +989,63 @@ async function decode() {
             return;
         }
         
-        // Try to use C++ backend first, fall back to client-side if needed
-        try {
-            const response = await fetch(`${API_BASE}/api/decode`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    encoded: currentEncodedData,
-                    codes: currentCodes
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Backend decoding failed');
+        console.log('=== Starting Decode ===');
+        console.log('Encoded data length:', currentEncodedData.length, 'bits');
+        console.log('Number of codes:', Object.keys(currentCodes).length);
+        
+        // Check if we have the original text (meaning we just encoded and haven't uploaded a file)
+        const originalText = document.getElementById('inputText').value;
+        const hasOriginalText = originalText && originalText.length > 0;
+        
+        // If we have original text, try backend first (it can use the tree from encoding)
+        // If we uploaded a file (no original text), use client-side decoding with the codes
+        if (hasOriginalText) {
+            console.log('Has original text - trying backend decode with tree');
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                const response = await fetch(`${API_BASE}/api/decode`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        encoded: currentEncodedData,
+                        codes: currentCodes
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`Backend decoding failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.decoded && data.decoded !== '') {
+                    throw new Error('Invalid response from backend - missing decoded data');
+                }
+                
+                const decoded = data.decoded;
+                
+                console.log('Backend decode successful, length:', decoded.length);
+                displayDecodedResult(decoded);
+            } catch (backendError) {
+                console.log('Backend decode failed, trying client-side:', backendError.message);
+                // Fall back to client-side decoding
+                const decoded = decodeWithClientCodes(currentEncodedData, currentCodes);
+                displayDecodedResult(decoded);
+                showToast('Decoded using embedded codes (client-side)', 'info');
             }
-            
-            const data = await response.json();
-            const decoded = data.decoded;
-            
-            displayDecodedResult(decoded);
-        } catch (backendError) {
-            console.log('Backend decode failed, trying client-side:', backendError);
-            // Fall back to client-side decoding
+        } else {
+            // No original text - this is an uploaded file, use client-side decoding
+            console.log('No original text - using client-side decode with codes from file');
             const decoded = decodeWithClientCodes(currentEncodedData, currentCodes);
             displayDecodedResult(decoded);
-            showToast('Decoded using embedded codes (client-side)', 'info');
+            showToast('Decoded using codes from uploaded file', 'success');
         }
 
     } catch (error) {
@@ -823,6 +1059,9 @@ async function decode() {
 function displayDecodedResult(decoded) {
     // Display decoded text
     document.getElementById('decodedOutput').innerHTML = `<div class="decoded-text">${escapeHtml(decoded)}</div>`;
+
+    // Switch to decoded tab
+    switchTab('decoded');
 
     // Verify against input if available
     const original = document.getElementById('inputText').value;
@@ -856,10 +1095,15 @@ function displayDecodedResult(decoded) {
 }
 
 function decodeWithClientCodes(encoded, codes) {
+    console.log('=== Client-side Decoding ===');
+    console.log('Encoded length:', encoded.length, 'bits');
+    console.log('Number of codes:', Object.keys(codes).length);
+    console.log('Codes:', codes);
+    
     // Build reverse lookup table (code -> character)
     const reverseCodes = {};
     for (const [char, code] of Object.entries(codes)) {
-        // Handle special characters
+        // Handle special characters - the backend might store them as actual chars or escaped
         let actualChar = char;
         if (char === '\\n') actualChar = '\n';
         else if (char === '\\t') actualChar = '\t';
@@ -869,8 +1113,12 @@ function decodeWithClientCodes(encoded, codes) {
         reverseCodes[code] = actualChar;
     }
     
+    console.log('Reverse codes built:', Object.keys(reverseCodes).length, 'mappings');
+    console.log('Sample reverse codes:', Object.entries(reverseCodes).slice(0, 5));
+    
     let decoded = '';
     let currentCode = '';
+    let unmatchedBits = 0;
     
     for (let i = 0; i < encoded.length; i++) {
         currentCode += encoded[i];
@@ -880,6 +1128,15 @@ function decodeWithClientCodes(encoded, codes) {
         }
     }
     
+    // Check for unmatched bits at the end (padding)
+    if (currentCode.length > 0) {
+        unmatchedBits = currentCode.length;
+        console.log('Warning: Unmatched bits at end (padding):', currentCode, 'length:', unmatchedBits);
+    }
+    
+    console.log('Decoded length:', decoded.length, 'characters');
+    console.log('Unmatched bits (padding):', unmatchedBits);
+    
     return decoded;
 }
 
@@ -888,6 +1145,29 @@ function decodeWithClientCodes(encoded, codes) {
 // ============================================
 
 function getDisplayChar(char) {
+    // Convert special characters to visual symbols for tree display
+    const specialChars = {
+        ' ': '␣ (space)',
+        '\n': '↵ (newline)',
+        '\t': '⇥ (tab)',
+        '\r': '⏎ (return)'
+    };
+    
+    // Check if it's a special character
+    if (specialChars[char]) {
+        return specialChars[char];
+    }
+    
+    // Check if character code is less than 32 (control character)
+    if (char && char.charCodeAt(0) < 32) {
+        return `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+    }
+    
+    // Return the character itself
+    return char;
+}
+
+function getDisplayChar_old(char) {
     const specialChars = {
         ' ': '␣',
         '\n': '↵',
@@ -944,31 +1224,28 @@ function toggleSort() {
 // Tree Controls
 // ============================================
 
-function zoomIn() {
-    zoomTree(0.25);
+// Tree zoom functions
+function zoomTreeIn() {
+    zoomTree(0.1);
 }
 
-function zoomOut() {
-    zoomTree(-0.25);
+function zoomTreeOut() {
+    zoomTree(-0.1);
 }
 
-function resetZoom() {
-    resetTreeZoom();
-}
-
-function zoomTree(factor) {
-    treeZoom = Math.max(0.25, Math.min(2, treeZoom + factor));
-    const wrapper = document.querySelector('.tree-wrapper');
-    if (wrapper) {
-        wrapper.style.transform = `scale(${treeZoom})`;
+function zoomTree(delta) {
+    treeZoom = Math.max(0.3, Math.min(2, treeZoom + delta));
+    const svg = document.querySelector('.tree-svg');
+    if (svg) {
+        svg.style.transform = `scale(${treeZoom})`;
     }
 }
 
 function resetTreeZoom() {
     treeZoom = 1;
-    const wrapper = document.querySelector('.tree-wrapper');
-    if (wrapper) {
-        wrapper.style.transform = 'scale(1)';
+    const svg = document.querySelector('.tree-svg');
+    if (svg) {
+        svg.style.transform = 'scale(1)';
     }
 }
 

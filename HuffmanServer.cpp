@@ -134,12 +134,17 @@ public:
     HuffmanCoder() : root(nullptr) {}
     
     ~HuffmanCoder() {
-        delete root;
+        if (root) {
+            delete root;
+            root = nullptr;
+        }
     }
     
     void reset() {
-        delete root;
-        root = nullptr;
+        if (root) {
+            delete root;
+            root = nullptr;
+        }
         huffmanCodes.clear();
         frequencies.clear();
         lastEncodedText.clear();
@@ -164,7 +169,7 @@ public:
         if (pq.size() == 1) {
             HuffmanNode* node = pq.top();
             pq.pop();
-            delete root;
+            if (root) delete root;
             root = new HuffmanNode('\0', node->freq);
             root->left = node;
         } else {
@@ -179,10 +184,12 @@ public:
                 pq.push(parent);
             }
             
-            delete root;
+            if (root) delete root;
             if (!pq.empty()) {
                 root = pq.top();
                 pq.pop();
+            } else {
+                root = nullptr;
             }
         }
         
@@ -191,6 +198,10 @@ public:
     }
     
     string encode(const string& text) {
+        if (text.empty() || huffmanCodes.empty()) {
+            return "";
+        }
+        
         string encoded;
         for (size_t i = 0; i < text.length(); i++) {
             if (huffmanCodes.find(text[i]) != huffmanCodes.end()) {
@@ -201,7 +212,7 @@ public:
     }
     
     string decode(const string& encoded) {
-        if (!root) return "";
+        if (!root || encoded.empty()) return "";
         
         string decoded;
         HuffmanNode* current = root;

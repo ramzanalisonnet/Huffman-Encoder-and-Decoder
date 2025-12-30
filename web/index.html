@@ -66,6 +66,59 @@
                 </button>
             </div>
 
+            <!-- Tabbed Output Section -->
+            <section class="card output-tabs-section">
+                <div class="tabs-header">
+                    <button class="tab-btn active" id="encodedTab" onclick="switchTab('encoded')">
+                        <i class="fas fa-lock"></i> Encoded Binary
+                    </button>
+                    <button class="tab-btn" id="decodedTab" onclick="switchTab('decoded')">
+                        <i class="fas fa-unlock"></i> Decoded Output
+                    </button>
+                </div>
+
+                <!-- Encoded Tab Content -->
+                <div class="tab-content active" id="encodedContent">
+                    <!-- Hidden file input -->
+                    <input type="file" id="binFileInput" accept=".bin,.huff" style="display: none;" onchange="loadBinFile(this)">
+                    
+                    <div class="tab-header-actions">
+                        <button class="btn btn-sm" onclick="document.getElementById('binFileInput').click()">
+                            <i class="fas fa-upload"></i> Upload .bin
+                        </button>
+                        <button class="btn btn-sm" onclick="copyEncoded()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-sm" onclick="downloadEncoded()">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="binary-display" id="encodedOutput">
+                            <p class="placeholder-text">Encoded binary will appear here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decoded Tab Content -->
+                <div class="tab-content" id="decodedContent">
+                    <div class="tab-header-actions">
+                        <button class="btn btn-sm" onclick="copyDecoded()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-sm" onclick="downloadDecoded()">
+                            <i class="fas fa-download"></i> Download .txt
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="decoded-display" id="decodedOutput">
+                            <p class="placeholder-text">Decoded text will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
             <!-- Results Grid -->
             <div class="results-grid">
                 <!-- Frequency Table -->
@@ -98,32 +151,6 @@
                     </div>
                 </section>
             </div>
-
-            <!-- Encoded Output -->
-            <section class="card encoded-section">
-                <!-- Hidden file input at section level -->
-                <input type="file" id="binFileInput" accept=".bin,.huff" style="display: none;" onchange="loadBinFile(this)">
-                
-                <div class="card-header">
-                    <h2><i class="fas fa-binary"></i> Encoded Binary</h2>
-                    <div class="header-actions">
-                        <button class="btn btn-sm" onclick="document.getElementById('binFileInput').click()">
-                            <i class="fas fa-upload"></i> Upload .bin
-                        </button>
-                        <button class="btn btn-sm" onclick="copyEncoded()">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                        <button class="btn btn-sm" onclick="downloadEncoded()">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="binary-display" id="encodedOutput">
-                        <p class="placeholder-text">Encoded binary will appear here</p>
-                    </div>
-                </div>
-            </section>
 
             <!-- Compression Stats -->
             <section class="card stats-section">
@@ -178,13 +205,13 @@
                 <div class="card-header">
                     <h2><i class="fas fa-sitemap"></i> Huffman Tree</h2>
                     <div class="header-actions">
-                        <button class="btn btn-sm" onclick="zoomIn()">
+                        <button class="btn btn-sm" onclick="zoomTreeIn()">
                             <i class="fas fa-search-plus"></i>
                         </button>
-                        <button class="btn btn-sm" onclick="zoomOut()">
+                        <button class="btn btn-sm" onclick="zoomTreeOut()">
                             <i class="fas fa-search-minus"></i>
                         </button>
-                        <button class="btn btn-sm" onclick="resetZoom()">
+                        <button class="btn btn-sm" onclick="resetTreeZoom()">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
@@ -199,26 +226,7 @@
                 </div>
             </section>
 
-            <!-- Decode Section -->
-            <section class="card decode-section">
-                <div class="card-header">
-                    <h2><i class="fas fa-unlock"></i> Decoded Output</h2>
-                    <div class="header-actions">
-                        <button class="btn btn-sm" onclick="copyDecoded()">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                        <button class="btn btn-sm" onclick="downloadDecoded()">
-                            <i class="fas fa-download"></i> Download .txt
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="decoded-display" id="decodedOutput">
-                        <p class="placeholder-text">Decoded text will appear here</p>
-                    </div>
-                </div>
-            </section>
-        </main>
+
 
         <!-- Footer -->
         <footer class="footer">
