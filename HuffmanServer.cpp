@@ -76,7 +76,10 @@ private:
     unordered_map<char, string> huffmanCodes;
     unordered_map<char, int> frequencies;
     string lastEncodedText;  // Store original text for verification
+
+
     
+    // Recursive function to build codes
     void buildCodes(HuffmanNode* node, const string& code) {
         if (!node) return;
         
@@ -87,7 +90,9 @@ private:
         buildCodes(node->left, code + "0");
         buildCodes(node->right, code + "1");
     }
-    
+
+
+    // Recursive function to build tree JSON
     void buildTreeJson(HuffmanNode* node, stringstream& ss, int depth = 0) {
         if (!node) {
             ss << "null";
@@ -139,7 +144,9 @@ public:
             root = nullptr;
         }
     }
-    
+
+
+    // Reset the coder state
     void reset() {
         if (root) {
             delete root;
@@ -149,7 +156,9 @@ public:
         frequencies.clear();
         lastEncodedText.clear();
     }
-    
+
+
+    // Calculate character frequencies
     void calculateFrequencies(const string& text) {
         frequencies.clear();
         lastEncodedText = text;  // Store for verification
@@ -157,7 +166,9 @@ public:
             frequencies[text[i]]++;
         }
     }
-    
+
+
+    // Build Huffman Tree
     void buildTree() {
         priority_queue<HuffmanNode*, vector<HuffmanNode*>, CompareNode> pq;
         
@@ -196,7 +207,9 @@ public:
         huffmanCodes.clear();
         buildCodes(root, "");
     }
-    
+
+
+    // Encode function
     string encode(const string& text) {
         if (text.empty() || huffmanCodes.empty()) {
             return "";
@@ -210,7 +223,9 @@ public:
         }
         return encoded;
     }
-    
+
+
+    // Decode function with error handling
     string decode(const string& encoded) {
         if (!root || encoded.empty()) return "";
         
@@ -254,7 +269,9 @@ public:
     string getLastEncodedText() const {
         return lastEncodedText;
     }
-    
+
+
+    // Get frequencies for JSON output
     string getFrequenciesJson() {
         stringstream ss;
         ss << "{";
@@ -284,7 +301,9 @@ public:
         ss << "}";
         return ss.str();
     }
-    
+
+
+    // Get codes for JSON output
     string getCodesJson() {
         stringstream ss;
         ss << "{";
@@ -314,7 +333,9 @@ public:
         ss << "}";
         return ss.str();
     }
-    
+
+
+    // Get tree structure for JSON output
     string getTreeJson() {
         stringstream ss;
         buildTreeJson(root, ss);

@@ -112,62 +112,35 @@ function loadBinFile(input) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const arrayBuffer = e.target.result;
-            const bytes = new Uint8Array(arrayBuffer);
+            // Try reading as text first (for .bin files with 0s and 1s)
+            const content = e.target.result;
             
-            console.log('Loading bin file:', file.name, 'Size:', bytes.length);
+            console.log('Loading file:', file.name, 'Size:', file.size);
             
-            // Check for HUFF magic header
-            if (bytes.length >= 8 && 
-                bytes[0] === 0x48 && bytes[1] === 0x55 && 
-                bytes[2] === 0x46 && bytes[3] === 0x46) {
-                // Parse HUFF file format (little endian)
-                const codesLength = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | (bytes[7] << 24);
-                const codesJson = new TextDecoder().decode(bytes.slice(8, 8 + codesLength));
+            // Check if it looks like a binary string (only contains 0, 1, whitespace, and newlines)
+            const binaryPattern = /^[01\s\n\r]+$/;
+            if (binaryPattern.test(content)) {
+                // It's a text file with binary digits - remove any whitespace/newlines
+                const binaryString = content.replace(/[\s\n\r]/g, '');
                 
-                console.log('Codes JSON length:', codesLength);
-                console.log('Codes JSON:', codesJson);
+                console.log('Loaded binary text file');
+                console.log('Binary data length:', binaryString.length, 'bits');
                 
-                // Convert remaining bytes to binary string
-                let binaryData = '';
-                const binaryStartPos = 8 + codesLength;
-                for (let i = binaryStartPos; i < bytes.length; i++) {
-                    binaryData += bytes[i].toString(2).padStart(8, '0');
-                }
-                
-                console.log('Binary data length:', binaryData.length, 'bits');
-                console.log('Binary start position:', binaryStartPos);
-                console.log('Total bytes:', bytes.length);
-                
-                try {
-                    const parsedCodes = JSON.parse(codesJson);
-                    currentCodes = parsedCodes;
-                    currentEncodedData = binaryData;
-                    
-                    console.log('Parsed codes:', currentCodes);
-                    console.log('Number of codes:', Object.keys(currentCodes).length);
-                    
-                    // Display the codes table
-                    displayCodesTable(currentCodes);
-                    
-                    // Display the encoded binary
-                    displayEncodedBinary(binaryData);
-                    
-                    showToast('Loaded .huff file with ' + Object.keys(currentCodes).length + ' codes - ready to decode!', 'success');
-                } catch (err) {
-                    console.error('Error parsing .huff file:', err);
-                    showToast('Error parsing .huff file: ' + err.message, 'error');
-                }
-            } else {
-                // Plain binary file - convert bytes to binary string
-                let binaryString = '';
-                for (let i = 0; i < bytes.length; i++) {
-                    binaryString += bytes[i].toString(2).padStart(8, '0');
-                }
                 currentEncodedData = binaryString;
                 displayEncodedBinary(binaryString);
-                showToast('Loaded binary file (no codes - encode text first before decoding)', 'warning');
+                
+                // Check if we have codes from previous encoding
+                if (Object.keys(currentCodes).length > 0) {
+                    showToast('Binary file loaded! Ready to decode with current codes.', 'success');
+                } else {
+                    showToast('Binary file loaded! Please encode text first to generate codes before decoding.', 'warning');
+                }
+            } else {
+                // Not a simple binary text file - might be a different format
+                console.log('File does not appear to be a binary text file');
+                showToast('Invalid .bin file format. Expected file containing only 0s and 1s.', 'error');
             }
+            
             input.value = ''; // Reset for next upload
         } catch (err) {
             console.error('Error in loadBinFile:', err);
@@ -182,7 +155,8 @@ function loadBinFile(input) {
         input.value = '';
     };
     
-    reader.readAsArrayBuffer(file);
+    // Read as text since we're now saving binary strings as text
+    reader.readAsText(file);
 }
 
 // Global state
@@ -1272,43 +1246,16 @@ function downloadEncoded() {
         return;
     }
     
-    // Create a binary file with Huffman header
-    // Format: HUFF (4 bytes) + codes_length (4 bytes) + codes_json + binary_data
-    const codesJson = JSON.stringify(currentCodes);
-    const codesBytes = new TextEncoder().encode(codesJson);
-    
-    // Convert binary string to actual bytes
-    const binaryBytes = [];
-    for (let i = 0; i < currentEncodedData.length; i += 8) {
-        const byte = currentEncodedData.slice(i, i + 8).padEnd(8, '0');
-        binaryBytes.push(parseInt(byte, 2));
-    }
-    
-    // Create header: HUFF magic + codes length (4 bytes little endian) + codes + binary
-    const header = new Uint8Array([
-        0x48, 0x55, 0x46, 0x46,  // 'HUFF' magic bytes
-        codesBytes.length & 0xFF,
-        (codesBytes.length >> 8) & 0xFF,
-        (codesBytes.length >> 16) & 0xFF,
-        (codesBytes.length >> 24) & 0xFF
-    ]);
-    
-    // Combine all parts
-    const totalLength = header.length + codesBytes.length + binaryBytes.length;
-    const fileData = new Uint8Array(totalLength);
-    fileData.set(header, 0);
-    fileData.set(codesBytes, header.length);
-    fileData.set(new Uint8Array(binaryBytes), header.length + codesBytes.length);
-    
-    const blob = new Blob([fileData], { type: 'application/octet-stream' });
+    // Save binary string as text file (readable 0s and 1s)
+    const blob = new Blob([currentEncodedData], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'huffman_encoded.huff';
+    a.download = 'huffman_encoded.bin';
     a.click();
     URL.revokeObjectURL(url);
     
-    showToast(`File downloaded! (${formatBytes(fileData.length)})`);
+    showToast(`Binary file downloaded! (${formatBytes(currentEncodedData.length)} characters)`);
 }
 
 function downloadCodes() {

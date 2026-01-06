@@ -67,7 +67,7 @@
             </div>
 
             <!-- Tabbed Output Section -->
-            <section class="card output-tabs-section">
+            <section class="card output-tabs-section" style="margin-bottom: 2rem;">
                 <div class="tabs-header">
                     <button class="tab-btn active" id="encodedTab" onclick="switchTab('encoded')">
                         <i class="fas fa-lock"></i> Encoded Binary
@@ -79,13 +79,7 @@
 
                 <!-- Encoded Tab Content -->
                 <div class="tab-content active" id="encodedContent">
-                    <!-- Hidden file input -->
-                    <input type="file" id="binFileInput" accept=".bin,.huff" style="display: none;" onchange="loadBinFile(this)">
-                    
                     <div class="tab-header-actions">
-                        <button class="btn btn-sm" onclick="document.getElementById('binFileInput').click()">
-                            <i class="fas fa-upload"></i> Upload .bin
-                        </button>
                         <button class="btn btn-sm" onclick="copyEncoded()">
                             <i class="fas fa-copy"></i> Copy
                         </button>
@@ -102,7 +96,13 @@
 
                 <!-- Decoded Tab Content -->
                 <div class="tab-content" id="decodedContent">
+                    <!-- Hidden file input -->
+                    <input type="file" id="binFileInput" accept=".bin,.huff" style="display: none;" onchange="loadBinFile(this)">
+                    
                     <div class="tab-header-actions">
+                        <button class="btn btn-sm" onclick="document.getElementById('binFileInput').click()">
+                            <i class="fas fa-upload"></i> Upload .bin/.huff
+                        </button>
                         <button class="btn btn-sm" onclick="copyDecoded()">
                             <i class="fas fa-copy"></i> Copy
                         </button>
@@ -153,7 +153,7 @@
             </div>
 
             <!-- Compression Stats -->
-            <section class="card stats-section">
+            <section class="card stats-section" style="margin-bottom: 2rem;">
                 <div class="card-header">
                     <h2><i class="fas fa-chart-pie"></i> Compression Statistics</h2>
                 </div>
